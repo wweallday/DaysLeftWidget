@@ -1,0 +1,18 @@
+pluginManagement {
+    repositories {
+        google() // ← THIS IS THE MISSING PIECE
+        mavenCentral()
+        gradlePluginPortal()
+    }
+}
+
+dependencyResolutionManagement {
+    repositoriesMode.set(RepositoriesMode.FAIL_ON_PROJECT_REPOS)
+    repositories {
+        google()
+        mavenCentral()
+    }
+}
+
+rootProject.name = "DaysLeftWidget"
+include(":app")
