@@ -23,6 +23,8 @@ import androidx.compose.material3.OutlinedTextField
 import androidx.compose.material3.Scaffold
 import androidx.compose.material3.Text
 import androidx.compose.material3.TextButton
+import androidx.compose.foundation.rememberScrollState
+import androidx.compose.foundation.verticalScroll
 import androidx.compose.material3.rememberDatePickerState
 import androidx.compose.runtime.Composable
 import androidx.compose.runtime.getValue
@@ -151,27 +153,33 @@ private fun EventFormDialog(
 ) {
     var title by remember { mutableStateOf(initial?.title ?: "") }
 
-    val initialMillis = (initial?.targetDate ?: LocalDate.now().plusDays(30))
-        .atStartOfDay(ZoneId.systemDefault())
-        .toInstant()
-        .toEpochMilli()
-    val datePickerState = rememberDatePickerState(initialSelectedDateMillis = initialMillis)
+    // Target Date setup
+    val initialTargetMillis = (initial?.targetDate ?: LocalDate.now().plusDays(30))
+        .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val targetDatePickerState = rememberDatePickerState(initialSelectedDateMillis = initialTargetMillis)
+
+    // Start Date setup
+    val initialStartMillis = (initial?.startDate ?: LocalDate.now())
+        .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
+    val startDatePickerState = rememberDatePickerState(initialSelectedDateMillis = initialStartMillis)
 
     DatePickerDialog(
         onDismissRequest = onDismiss,
         confirmButton = {
             TextButton(onClick = {
-                val millis = datePickerState.selectedDateMillis ?: initialMillis
-                val date = Instant.ofEpochMilli(millis)
-                    .atZone(ZoneId.systemDefault())
-                    .toLocalDate()
+                val tMillis = targetDatePickerState.selectedDateMillis ?: initialTargetMillis
+                val sMillis = startDatePickerState.selectedDateMillis ?: initialStartMillis
+
+                val targetDate = Instant.ofEpochMilli(tMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+                val startDate = Instant.ofEpochMilli(sMillis).atZone(ZoneId.systemDefault()).toLocalDate()
+
                 onSave(
                     CountdownEvent(
                         id = initial?.id ?: System.currentTimeMillis(),
-                        startDate = initial?.startDate ?: LocalDate.now(),
+                        startDate = startDate, // Passes the custom start date!
                         title = title.ifEmpty { "Untitled" },
-                        targetDate = date,
-                    ),
+                        targetDate = targetDate
+                    )
                 )
             }) { Text("Save") }
         },
@@ -179,15 +187,25 @@ private fun EventFormDialog(
             TextButton(onClick = onDismiss) { Text("Cancel") }
         }
     ) {
-        Column {
+        Column(
+            modifier = Modifier
+                .verticalScroll(rememberScrollState())
+                .padding(horizontal = 24.dp, vertical = 16.dp)
+        ) {
             OutlinedTextField(
                 value = title,
                 onValueChange = { title = it },
                 label = { Text("Event name") },
-                modifier = Modifier.fillMaxWidth().padding(horizontal = 24.dp)
+                modifier = Modifier.fillMaxWidth()
             )
-            Spacer(Modifier.height(8.dp))
-            DatePicker(state = datePickerState)
+            
+            Spacer(Modifier.height(16.dp))
+            Text("Target Date", color = Color.White, fontWeight = FontWeight.Bold)
+            DatePicker(state = targetDatePickerState)
+            
+            Spacer(Modifier.height(16.dp))
+            Text("Start Date (for progress grid)", color = Color.White, fontWeight = FontWeight.Bold)
+            DatePicker(state = startDatePickerState)
         }
     }
 }
