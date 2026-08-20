@@ -27,10 +27,8 @@ import java.time.LocalDateTime
 
 @Composable
 fun CountdownScreen(event: CountdownEvent) {
-    // STATE: "now" is the only piece of state. Change it -> UI redraws.
     var now by remember { mutableStateOf(LocalDateTime.now()) }
 
-    // Tick every second forever
     LaunchedEffect(Unit) {
         while (true) {
             delay(1000)

@@ -1,6 +1,6 @@
 pluginManagement {
     repositories {
-        google() // ← THIS IS THE MISSING PIECE
+        google()
         mavenCentral()
         gradlePluginPortal()
     }

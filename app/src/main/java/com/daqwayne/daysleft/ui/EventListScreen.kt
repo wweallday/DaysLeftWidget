@@ -153,12 +153,10 @@ private fun EventFormDialog(
 ) {
     var title by remember { mutableStateOf(initial?.title ?: "") }
 
-    // Target Date setup
     val initialTargetMillis = (initial?.targetDate ?: LocalDate.now().plusDays(30))
         .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val targetDatePickerState = rememberDatePickerState(initialSelectedDateMillis = initialTargetMillis)
 
-    // Start Date setup
     val initialStartMillis = (initial?.startDate ?: LocalDate.now())
         .atStartOfDay(ZoneId.systemDefault()).toInstant().toEpochMilli()
     val startDatePickerState = rememberDatePickerState(initialSelectedDateMillis = initialStartMillis)
@@ -176,7 +174,7 @@ private fun EventFormDialog(
                 onSave(
                     CountdownEvent(
                         id = initial?.id ?: System.currentTimeMillis(),
-                        startDate = startDate, // Passes the custom start date!
+                        startDate = startDate,
                         title = title.ifEmpty { "Untitled" },
                         targetDate = targetDate
                     )

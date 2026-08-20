@@ -52,7 +52,6 @@ class DaysLeftWidget : GlanceAppWidget() {
 
 @Composable
 private fun WidgetContent(event: CountdownEvent?) {
-    // Explicitly use Compose Color to avoid android.graphics.Color clash
     val accentColor = androidx.compose.ui.graphics.Color(0xFF4CAF50)
     val dimColor = androidx.compose.ui.graphics.Color(0xFF2E2E2E)
     val textColor = androidx.compose.ui.graphics.Color.White
@@ -75,11 +74,11 @@ private fun WidgetContent(event: CountdownEvent?) {
                 horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             ) {
                 DayGrid(event, accentColor, dimColor)
-                Spacer(GlanceModifier.height(8.dp)) // Replaces verticalArrangement
+                Spacer(GlanceModifier.height(8.dp))
                 Text(
                     "${event.daysLeft()} days",
                     style = TextStyle(
-                        color = ColorProvider(textColor), // Single argument = no overload confusion
+                        color = ColorProvider(textColor),
                         fontSize = 20.sp,
                         fontWeight = FontWeight.Bold,
                     ),
@@ -113,12 +112,12 @@ private fun DayGrid(event: CountdownEvent, accent: androidx.compose.ui.graphics.
                             modifier = GlanceModifier
                                 .size(8.dp)
                                 .background(if (dayAtCell < passed) dim else accent)
-                        ) { } // <--- ADDED EMPTY BRACES HERE
+                        ) { }
                         if (c < cols - 1) Spacer(GlanceModifier.width(4.dp))
                     } else {
                         Box(
                             modifier = GlanceModifier.size(8.dp)
-                        ) { } // <--- ADDED EMPTY BRACES HERE
+                        ) { }
                         if (c < cols - 1) Spacer(GlanceModifier.width(4.dp))
                     }
                 }

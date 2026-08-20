@@ -10,7 +10,7 @@ android {
 
     defaultConfig {
         applicationId = "com.daqwayne.daysleft"
-        minSdk = 26 // java.time works free from 26 up
+        minSdk = 26
         targetSdk = 35
         versionCode = 1
         versionName = "0.1"

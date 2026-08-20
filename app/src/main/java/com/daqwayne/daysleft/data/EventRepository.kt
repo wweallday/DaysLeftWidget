@@ -21,7 +21,7 @@ class EventRepository(
             try {
                 gson.fromJson(jsonString, type) ?: emptyList()
             } catch (e: Exception) {
-                emptyList() // Failsafe if the file is corrupted
+                emptyList()
             }
         return jsonList.map { it.toEvent() }
     }
@@ -32,7 +32,6 @@ class EventRepository(
     }
 }
 
-// Helper class to handle LocalDate safely
 private data class EventJson(
     val id: Long,
     val startDate: String,
