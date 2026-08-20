@@ -4,6 +4,8 @@ import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 
 data class CountdownEvent(
+    val id: Long = System.currentTimeMillis(),
+    val startDate: LocalDate = LocalDate.now(),
     val title: String,
     val targetDate: LocalDate,
 )
