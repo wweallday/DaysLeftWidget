@@ -23,5 +23,14 @@
               android:name="android.appwidget.provider"
               android:resource="@xml/days_left_widget_info" />
         </receiver>
+        <activity
+            android:name=".ui.WidgetConfigActivity"
+            android:exported="true"
+            android:excludeFromRecents="true"
+            android:theme="@style/Theme.DaysLeft">
+            <intent-filter>
+                <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
+            </intent-filter>
+        </activity>
     </application>
 </manifest>

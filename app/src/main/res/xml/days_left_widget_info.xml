@@ -6,4 +6,5 @@
     android:targetCellHeight="2"
     android:updatePeriodMillis="1800000"
     android:resizeMode="horizontal|vertical"
+    android:configure="com.daqwayne.daysleft.ui.WidgetConfigActivity"
     android:widgetCategory="home_screen" />
