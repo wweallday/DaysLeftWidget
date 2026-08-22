@@ -7,6 +7,11 @@ plugins {
 android {
     namespace = "com.daqwayne.daysleft"
     compileSdk = 35
+    testOptions {
+        unitTests {
+            isIncludeAndroidResources = true
+        }
+    }
 
     defaultConfig {
         applicationId = "com.daqwayne.daysleft"
@@ -34,5 +39,8 @@ dependencies {
     implementation("com.google.code.gson:gson:2.11.0")
     implementation("androidx.glance:glance-appwidget:1.1.1")
     implementation("androidx.glance:glance-material3:1.1.1")
+    testImplementation("junit:junit:4.13.2")
+    testImplementation("org.robolectric:robolectric:4.12.2")
+    testImplementation("androidx.test:core:1.6.1")
     implementation("androidx.lifecycle:lifecycle-runtime-ktx:2.8.7")
 }

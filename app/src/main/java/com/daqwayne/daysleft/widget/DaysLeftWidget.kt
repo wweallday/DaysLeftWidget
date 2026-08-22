@@ -15,6 +15,7 @@ import androidx.glance.appwidget.GlanceAppWidget
 import androidx.glance.appwidget.GlanceAppWidgetManager
 import androidx.glance.appwidget.GlanceAppWidgetReceiver
 import androidx.glance.appwidget.provideContent
+import androidx.glance.LocalSize
 import androidx.glance.background
 import androidx.glance.layout.Alignment
 import androidx.glance.layout.Box
@@ -30,17 +31,24 @@ import androidx.glance.text.FontWeight
 import androidx.glance.text.Text
 import androidx.glance.text.TextStyle
 import androidx.glance.unit.ColorProvider
+import android.widget.RemoteViews
+import com.daqwayne.daysleft.R
+import androidx.glance.LocalContext
+import androidx.glance.appwidget.AndroidRemoteViews
 import com.daqwayne.daysleft.MainActivity
 import com.daqwayne.daysleft.data.EventRepository
 import com.daqwayne.daysleft.data.WidgetConfigRepository
 import com.daqwayne.daysleft.model.CountdownEvent
+import kotlinx.coroutines.CoroutineScope
+import kotlinx.coroutines.Dispatchers
+import kotlinx.coroutines.Job
+import kotlinx.coroutines.delay
+import kotlinx.coroutines.launch
+import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import com.daqwayne.daysleft.model.DotShape
 import com.daqwayne.daysleft.model.WidgetConfig
 import com.daqwayne.daysleft.model.daysLeft
-import kotlinx.coroutines.CoroutineScope
-import kotlinx.coroutines.Dispatchers
-import kotlinx.coroutines.launch
 import java.time.LocalDate
 import java.time.temporal.ChronoUnit
 import kotlin.math.ceil
@@ -50,7 +58,9 @@ import kotlin.math.sqrt
 class DaysLeftWidgetReceiver : GlanceAppWidgetReceiver() {
     override val glanceAppWidget: GlanceAppWidget = DaysLeftWidget()
 
-    // Every resize event → force a recompose with the fresh size
+    private val scope = CoroutineScope(Dispatchers.IO)
+    private var updateJob: Job? = null
+
     override fun onAppWidgetOptionsChanged(
         context: Context,
         appWidgetManager: AppWidgetManager,
@@ -59,7 +69,13 @@ class DaysLeftWidgetReceiver : GlanceAppWidgetReceiver() {
     ) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
         val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
-        CoroutineScope(Dispatchers.IO).launch {
+        
+        // Cancel previous pending update
+        updateJob?.cancel()
+        
+        // Wait 400ms for the resize drag to finish
+        updateJob = scope.launch {
+            delay(400)
             glanceAppWidget.update(context, glanceId)
         }
     }
@@ -115,15 +131,39 @@ private fun WidgetContent(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             ) {
-                DayGrid(event, accentColor, dimColor, config.shape, spaceW, spaceH, debug)
+                // Real size first (LocalSize), options as fallback
+                val local = LocalSize.current
+                val effW = if (local.width.value > 20f) local.width.value else spaceW
+                val effH = if (local.height.value > 20f) local.height.value else spaceH
+
+                val total = ChronoUnit.DAYS.between(event.startDate, event.targetDate).toInt().coerceAtLeast(1)
+                val passed = ChronoUnit.DAYS.between(event.startDate, LocalDate.now()).toInt().coerceIn(0, total)
+
+                val gridHeightDp = effH - 90f
+                val gridWidthDp = effW - 24f
+
+                val bitmap = DotGridRenderer.render(
+                    context = LocalContext.current,
+                    widthDp = gridWidthDp,
+                    heightDp = gridHeightDp,
+                    total = total,
+                    passed = passed,
+                    shape = config.shape.ordinal,
+                    accentColor = accentColor.toArgb()
+                )
+
+                val rv = RemoteViews(LocalContext.current.packageName, R.layout.widget_grid).apply {
+                    setImageViewBitmap(R.id.grid_image, bitmap)
+                }
+
+                Box(GlanceModifier.fillMaxWidth().height(gridHeightDp.dp)) {
+                    AndroidRemoteViews(remoteViews = rv)
+                }
+
                 Spacer(GlanceModifier.height(8.dp))
                 Text(
                     "${event.daysLeft()} days",
-                    style = TextStyle(
-                        color = ColorProvider(textColor),
-                        fontSize = 20.sp,
-                        fontWeight = FontWeight.Bold,
-                    ),
+                    style = TextStyle(color = ColorProvider(textColor), fontSize = 20.sp, fontWeight = FontWeight.Bold),
                 )
                 Spacer(GlanceModifier.height(4.dp))
                 Text(
@@ -136,7 +176,6 @@ private fun WidgetContent(
                         style = TextStyle(color = ColorProvider(Color(0xFF666666)), fontSize = 9.sp),
                     )
                 }
-                
             }
         }
     }
