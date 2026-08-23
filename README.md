@@ -4,8 +4,6 @@ A clean, minimalist, **free** home-screen widget that counts down the days left 
 
 No ads. No tracking. No account. Just days.
 
-> **Status:** Beta 0.1 — early but functional. Expect rough edges.
-
 ## Features
 
 - **Countdown cards** — create as many events as you like, each with its own target date
@@ -13,7 +11,6 @@ No ads. No tracking. No account. Just days.
   bright dots for days still left, dim dots for days already lived
 - **Adjustable window** — set both a start date and a target date to track true progress
 - **Fully local** — your events never leave your device
-- **Dark by design** — built OLED-first, with Material You accents on Android 12+
 
 ## The Why
 
@@ -45,13 +42,6 @@ Requires JDK 17 and Android SDK (API 35).
 - Jetpack Compose (app UI)
 - Jetpack Glance (home-screen widget)
 - Material 3 · java.time · Gson
-
-## Roadmap
-
-- [ ] Adaptive widget sizes (2×2 / 4×2 / 4×4)
-- [ ] Per-event widget instances (choose which event a widget tracks)
-- [ ] Countdown notifications ("7 days left")
-- [ ] Signed release builds
 
 ## License
 
