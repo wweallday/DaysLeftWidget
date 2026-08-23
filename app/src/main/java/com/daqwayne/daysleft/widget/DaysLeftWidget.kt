@@ -131,16 +131,12 @@ private fun WidgetContent(
                 modifier = GlanceModifier.fillMaxWidth(),
                 horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
             ) {
-                // Real size first (LocalSize), options as fallback
-                val local = LocalSize.current
-                val effW = if (local.width.value > 20f) local.width.value else spaceW
-                val effH = if (local.height.value > 20f) local.height.value else spaceH
 
                 val total = ChronoUnit.DAYS.between(event.startDate, event.targetDate).toInt().coerceAtLeast(1)
                 val passed = ChronoUnit.DAYS.between(event.startDate, LocalDate.now()).toInt().coerceIn(0, total)
 
-                val gridHeightDp = effH - 90f
-                val gridWidthDp = effW - 24f
+                val gridHeightDp = spaceH - 90f
+                val gridWidthDp = spaceW - 24f
 
                 val bitmap = DotGridRenderer.render(
                     context = LocalContext.current,
@@ -149,7 +145,8 @@ private fun WidgetContent(
                     total = total,
                     passed = passed,
                     shape = config.shape.ordinal,
-                    accentColor = accentColor.toArgb()
+                    accentColor = accentColor.toArgb(),
+                    debug = debug,
                 )
 
                 val rv = RemoteViews(LocalContext.current.packageName, R.layout.widget_grid).apply {

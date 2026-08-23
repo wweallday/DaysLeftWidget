@@ -1,6 +1,7 @@
 package com.daqwayne.daysleft.widget
 
 import android.content.Context
+import kotlin.math.round
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -20,7 +21,8 @@ object DotGridRenderer {
         total: Int,
         passed: Int,
         shape: Int,
-        accentColor: Int
+        accentColor: Int,
+        debug: Boolean = false
     ): Bitmap {
         val density = context.resources.displayMetrics.density
         val w = (widthDp * density).toInt().coerceAtLeast(10)
@@ -34,23 +36,47 @@ object DotGridRenderer {
 
         val spacing = 2f * density
         val minDot = 3f * density
-        val cells = total.coerceAtLeast(1).coerceAtMost(400)
+        var cells = total.coerceAtLeast(1).coerceAtMost(400)
 
-        val colsMax = maxOf(1, floor((w + spacing) / (minDot + spacing)).toInt())
-        val cols = maxOf(1, minOf(colsMax, ceil(sqrt(cells.toFloat())).toInt()))
-        val rows = maxOf(1, ceil(cells.toFloat() / cols).toInt())
+        val aspect = w.toFloat() / h.toFloat()
 
-        val dot = min(
+        // 1) ASPECT-AWARE grid: wide widget → more cols, tall widget → more rows
+        var cols = maxOf(1, round(sqrt(cells.toFloat() * aspect)).toInt())
+        var rows = maxOf(1, ceil(cells.toFloat() / cols).toInt())
+        var dot = min(
             (w - (cols - 1) * spacing) / cols,
             (h - (rows - 1) * spacing) / rows
         )
-        if (dot <= 0f) return bitmap
 
+        // 2) dots too small → fewer cells (each dot = more days)
+        if (dot < minDot) {
+            val colsMax = maxOf(1, floor((w + spacing) / (minDot + spacing)).toInt())
+            val rowsMax = maxOf(1, floor((h + spacing) / (minDot + spacing)).toInt())
+            cells = minOf(cells, colsMax * rowsMax)
+            cols = maxOf(1, round(sqrt(cells.toFloat() * aspect)).toInt()).coerceAtMost(colsMax)
+            rows = maxOf(1, ceil(cells.toFloat() / cols).toInt()).coerceAtMost(rowsMax)
+            dot = min(
+                (w - (cols - 1) * spacing) / cols,
+                (h - (rows - 1) * spacing) / rows
+            )
+        }
+
+        // 3) FLOW TO THE EDGES: pack more columns while the height allows
+        val fitCols = maxOf(1, floor((w + spacing) / (dot + spacing)).toInt())
+        if (fitCols > cols) {
+            cols = minOf(fitCols, cells)
+            rows = maxOf(1, ceil(cells.toFloat() / cols).toInt())
+            dot = min(
+                (w - (cols - 1) * spacing) / cols,
+                (h - (rows - 1) * spacing) / rows
+            )
+        }
+
+        // center the finished grid in the bitmap
         val gridW = cols * dot + (cols - 1) * spacing
         val gridH = rows * dot + (rows - 1) * spacing
         val ox = (w - gridW) / 2f
         val oy = (h - gridH) / 2f
-
         val fillAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accentColor }
         val fillDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF2E2E2E.toInt() }
         val strokeAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = accentColor; strokeWidth = dot / 6f }
@@ -78,6 +104,15 @@ object DotGridRenderer {
                 }
             }
         }
+        if (debug) {
+          val borderPaint = Paint().apply {
+              color = Color.WHITE
+              style = Paint.Style.STROKE
+              strokeWidth = 2f * density
+          }
+          val i = borderPaint.strokeWidth / 2f
+          canvas.drawRect(i, i, w - i, h - i, borderPaint)
+      }
         return bitmap
     }
 }
