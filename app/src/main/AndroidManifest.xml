@@ -32,5 +32,12 @@
                 <action android:name="android.appwidget.action.APPWIDGET_CONFIGURE" />
             </intent-filter>
         </activity>
+        <receiver
+              android:name=".WallpaperChangeReceiver"
+              android:exported="true">
+              <intent-filter>
+                  <action android:name="android.intent.action.WALLPAPER_CHANGED" />
+              </intent-filter>
+          </receiver>
     </application>
 </manifest>

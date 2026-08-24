@@ -10,6 +10,7 @@ enum class DotColor(
     ORANGE(0xFFFF9800),
     RED(0xFFF44336),
     YELLOW(0xFFFFEB3B),
+    MATERIAL_YOU(-1L),
 }
 
 data class WidgetConfig(

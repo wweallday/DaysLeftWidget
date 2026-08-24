@@ -4,6 +4,10 @@ import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import androidx.compose.runtime.Composable
+import android.os.Build
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.platform.LocalContext
+import androidx.compose.ui.graphics.Brush
 import android.os.Bundle
 import androidx.activity.ComponentActivity
 import androidx.activity.compose.setContent
@@ -63,7 +67,10 @@ class WidgetConfigActivity : ComponentActivity() {
         val initial = configRepo.getConfig(appWidgetId)
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            val context = LocalContext.current
+            MaterialTheme(
+                colorScheme = if (Build.VERSION.SDK_INT >= 31) dynamicDarkColorScheme(context) else darkColorScheme()
+            ) {
                 var eventId by remember { mutableStateOf(initial.eventId) }
                 var shape by remember { mutableStateOf(initial.shape) }
                 var color by remember { mutableStateOf(initial.color) }
@@ -104,7 +111,13 @@ class WidgetConfigActivity : ComponentActivity() {
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
-                            .background(Color(color.hex), CircleShape)
+                            .background(
+                                if (color == DotColor.MATERIAL_YOU && Build.VERSION.SDK_INT >= 31) 
+                                    dynamicDarkColorScheme(LocalContext.current).primary 
+                                else 
+                                    Color(color.hex), 
+                                CircleShape
+                            )
                             .clickable {
                                 lifecycleScope.launch {
                                     configRepo.saveConfig(
@@ -155,13 +168,30 @@ private fun ShapeButton(glyph: String, s: DotShape, current: DotShape, onPick: (
 
 @Composable
 private fun ColorButton(c: DotColor, current: DotColor, onPick: (DotColor) -> Unit) {
+    val isSelected = current == c
     Box(
         modifier = Modifier
             .size(40.dp)
-            .background(if (current == c) Color.White else Color.Transparent, CircleShape)
+            .background(if (isSelected) Color.White else Color.Transparent, CircleShape)
             .clickable { onPick(c) },
         contentAlignment = Alignment.Center
     ) {
-        Box(Modifier.size(28.dp).background(Color(c.hex), CircleShape))
+        val innerModifier = if (c == DotColor.MATERIAL_YOU) {
+            // Draw the rainbow gradient for Material You
+            Modifier.size(28.dp).background(
+                brush = Brush.sweepGradient(
+                    listOf(
+                        Color(0xFFE57373), Color(0xFFFFF176), Color(0xFF81C784),
+                        Color(0xFF64B5F6), Color(0xFFBA68C8), Color(0xFFE57373)
+                    )
+                ),
+                shape = CircleShape
+            )
+        } else {
+            // Draw the solid hex color for normal colors
+            Modifier.size(28.dp).background(Color(c.hex), CircleShape)
+        }
+        
+        Box(innerModifier)
     }
 }

@@ -33,6 +33,9 @@ import com.daqwayne.daysleft.ui.SettingsScreen
 import androidx.glance.appwidget.updateAll
 import com.daqwayne.daysleft.widget.DaysLeftWidget
 import kotlinx.coroutines.launch
+import android.os.Build
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.platform.LocalContext
 
 class MainActivity : ComponentActivity() {
 
@@ -42,7 +45,15 @@ class MainActivity : ComponentActivity() {
         super.onCreate(savedInstanceState)
 
         setContent {
-            MaterialTheme(colorScheme = darkColorScheme()) {
+            val context = LocalContext.current
+            MaterialTheme(
+                colorScheme = if (Build.VERSION.SDK_INT >= 31) {
+                    dynamicDarkColorScheme(context)
+                } else {
+                    darkColorScheme()
+                }
+            ) 
+          {
                 var tab by remember { mutableStateOf(0) }
                 var events by remember { mutableStateOf(repo.loadEvents()) }
 

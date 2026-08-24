@@ -3,6 +3,9 @@ package com.daqwayne.daysleft.widget
 import android.appwidget.AppWidgetManager
 import com.daqwayne.daysleft.data.DebugPrefs
 import android.content.Context
+import android.os.Build
+import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.graphics.toArgb
 import android.os.Bundle
 import androidx.compose.runtime.Composable
 import androidx.compose.ui.unit.dp
@@ -115,7 +118,7 @@ private fun WidgetContent(
     val textColor = Color.White
     val subTextColor = Color(0xFF888888)
     val bgColor = Color.Black
-
+    val (accentArgb, dimArgb) = accentAndDim(config.color.hex)
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
@@ -145,7 +148,7 @@ private fun WidgetContent(
                     total = total,
                     passed = passed,
                     shape = config.shape.ordinal,
-                    accentColor = accentColor.toArgb(),
+                    accentColor = accentArgb,
                     debug = debug,
                 )
 
@@ -251,5 +254,18 @@ private fun DayGrid(
                 ),
             )
         }
+    }
+}
+
+@Composable
+private fun accentAndDim(hex: Long): Pair<Int, Int> {
+    val ctx = LocalContext.current
+    return when {
+        hex >= 0 -> hex.toInt() to 0xFF2E2E2E.toInt()                     // preset
+        Build.VERSION.SDK_INT >= 31 -> {
+            val s = dynamicDarkColorScheme(ctx)
+            s.primary.toArgb() to s.surfaceVariant.toArgb()               // Material You
+        }
+        else -> 0xFF4CAF50.toInt() to 0xFF2E2E2E.toInt()                  // pre-S fallback
     }
 }
