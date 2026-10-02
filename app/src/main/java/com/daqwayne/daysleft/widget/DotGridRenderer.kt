@@ -78,11 +78,10 @@ object DotGridRenderer {
         val ox = (w - gridW) / 2f
         val oy = (h - gridH) / 2f
         val fillAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accentColor }
-        val fillDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF2E2E2E.toInt() }
         val strokeAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = accentColor; strokeWidth = dot / 6f }
-        val strokeDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = 0xFF2E2E2E.toInt(); strokeWidth = dot / 6f }
         val rect = RectF()
-
+        val fillDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF4A4A4A.toInt() } 
+        val strokeDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = 0xFF4A4A4A.toInt(); strokeWidth = dot / 6f }
         for (i in 0 until cells) {
             val r = i / cols
             val c = i % cols

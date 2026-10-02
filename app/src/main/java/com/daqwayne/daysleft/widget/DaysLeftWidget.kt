@@ -1,5 +1,6 @@
 package com.daqwayne.daysleft.widget
 
+import androidx.glance.layout.width
 import android.appwidget.AppWidgetManager
 import com.daqwayne.daysleft.data.DebugPrefs
 import android.content.Context
@@ -113,33 +114,32 @@ private fun WidgetContent(
     spaceH: Float,
     debug: Boolean,
 ) {
-    val accentColor = Color(config.color.hex)
-    val dimColor = Color(0xFF2E2E2E)
+    val bgColor = Color.Black
     val textColor = Color.White
     val subTextColor = Color(0xFF888888)
-    val bgColor = Color.Black
     val (accentArgb, dimArgb) = accentAndDim(config.color.hex)
+
     Box(
         modifier = GlanceModifier
             .fillMaxSize()
             .background(bgColor)
             .clickable(actionStartActivity(MainActivity::class.java))
             .padding(12.dp),
-        contentAlignment = Alignment.Center,
     ) {
         if (event == null) {
             Text("No countdowns", style = TextStyle(color = ColorProvider(subTextColor)))
         } else {
             Column(
-                modifier = GlanceModifier.fillMaxWidth(),
-                horizontalAlignment = Alignment.Horizontal.CenterHorizontally,
+                modifier = GlanceModifier.fillMaxSize(),
             ) {
-
                 val total = ChronoUnit.DAYS.between(event.startDate, event.targetDate).toInt().coerceAtLeast(1)
                 val passed = ChronoUnit.DAYS.between(event.startDate, LocalDate.now()).toInt().coerceIn(0, total)
 
-                val gridHeightDp = spaceH - 90f
-                val gridWidthDp = spaceW - 24f
+                // Calculate available space for the grid
+                // 24dp accounts for the 12dp outer padding on left/right.
+                // 64dp reserves space for the bottom text row + spacers so the grid doesn't overlap.
+                val gridWidthDp = (spaceW - 24f).coerceAtLeast(10f)
+                val gridHeightDp = (spaceH - 64f).coerceAtLeast(20f)
 
                 val bitmap = DotGridRenderer.render(
                     context = LocalContext.current,
@@ -156,21 +156,52 @@ private fun WidgetContent(
                     setImageViewBitmap(R.id.grid_image, bitmap)
                 }
 
-                Box(GlanceModifier.fillMaxWidth().height(gridHeightDp.dp)) {
-                    AndroidRemoteViews(remoteViews = rv)
+                // The Grid takes up all remaining vertical space above the text
+                Box(
+                    modifier = GlanceModifier
+                        .fillMaxWidth()
+                        .defaultWeight()
+                ) {
+                    AndroidRemoteViews(
+                        remoteViews = rv,
+                        modifier = GlanceModifier.fillMaxSize()
+                    )
                 }
 
                 Spacer(GlanceModifier.height(8.dp))
-                Text(
-                    "${event.daysLeft()} days",
-                    style = TextStyle(color = ColorProvider(textColor), fontSize = 20.sp, fontWeight = FontWeight.Bold),
-                )
-                Spacer(GlanceModifier.height(4.dp))
-                Text(
-                    event.title,
-                    style = TextStyle(color = ColorProvider(subTextColor), fontSize = 12.sp),
-                )
+
+                // BOTTOM ROW: Title on Left, Days on Right
+                Row(
+                    modifier = GlanceModifier.fillMaxWidth(),
+                    verticalAlignment = Alignment.Vertical.CenterVertically
+                ) {
+                    // defaultWeight() forces the title to take up available space, 
+                    // pushing the "days" text to the far right edge.
+                    Text(
+                        text = event.title,
+                        modifier = GlanceModifier.defaultWeight(),
+                        style = TextStyle(
+                            color = ColorProvider(subTextColor), 
+                            fontSize = 13.sp // Fixed, consistent size
+                        ),
+                        maxLines = 1, // Prevents wrapping into the days text
+                    )
+                    
+                    Spacer(GlanceModifier.width(8.dp))
+                    
+                    Text(
+                        text = "${event.daysLeft()} days",
+                        style = TextStyle(
+                            color = ColorProvider(textColor), 
+                            fontSize = 14.sp, // Fixed, consistent size
+                            fontWeight = FontWeight.Bold
+                        ),
+                        maxLines = 1,
+                    )
+                }
+
                 if (debug) {
+                    Spacer(GlanceModifier.height(4.dp))
                     Text(
                         "#$widgetId · ${spaceW.toInt()}x${spaceH.toInt()}",
                         style = TextStyle(color = ColorProvider(Color(0xFF666666)), fontSize = 9.sp),
