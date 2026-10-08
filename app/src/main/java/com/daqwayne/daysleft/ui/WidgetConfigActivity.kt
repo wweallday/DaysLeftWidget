@@ -1,11 +1,15 @@
 package com.daqwayne.daysleft.ui
 
+import com.daqwayne.daysleft.data.DebugPrefs
+import androidx.compose.foundation.text.KeyboardOptions
+import androidx.compose.ui.text.input.KeyboardType
 import android.app.Activity
 import android.appwidget.AppWidgetManager
 import android.content.Intent
 import androidx.compose.runtime.Composable
 import android.os.Build
 import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.material3.OutlinedTextField // <-- ADDED MISSING IMPORT
 import androidx.compose.ui.platform.LocalContext
 import androidx.compose.ui.graphics.Brush
 import android.os.Bundle
@@ -66,15 +70,16 @@ class WidgetConfigActivity : ComponentActivity() {
         val configRepo = WidgetConfigRepository(this)
         val initial = configRepo.getConfig(appWidgetId)
 
+        // --- FIX 1: setContent MUST be inside onCreate! ---
         setContent {
             val context = LocalContext.current
+            
+            // Consolidate into a SINGLE state object so config.copy() works
+            var config by remember { mutableStateOf(initial) }
+
             MaterialTheme(
                 colorScheme = if (Build.VERSION.SDK_INT >= 31) dynamicDarkColorScheme(context) else darkColorScheme()
             ) {
-                var eventId by remember { mutableStateOf(initial.eventId) }
-                var shape by remember { mutableStateOf(initial.shape) }
-                var color by remember { mutableStateOf(initial.color) }
-
                 Column(
                     modifier = Modifier
                         .fillMaxSize()
@@ -86,43 +91,93 @@ class WidgetConfigActivity : ComponentActivity() {
 
                     Text("EVENT", color = Color.Gray)
                     Spacer(Modifier.height(8.dp))
-                    OptionRow("Nearest (auto)", selected = eventId == null) { eventId = null }
+                    OptionRow("Nearest (auto)", selected = config.eventId == null) { config = config.copy(eventId = null) }
                     events.forEach { e ->
-                        OptionRow(e.title, selected = eventId == e.id) { eventId = e.id }
+                        OptionRow(e.title, selected = config.eventId == e.id) { config = config.copy(eventId = e.id) }
                     }
 
                     Spacer(Modifier.height(24.dp))
                     Text("DOT SHAPE", color = Color.Gray)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(16.dp)) {
-                        ShapeButton("■", DotShape.SQUARE, shape) { shape = it }
-                        ShapeButton("●", DotShape.CIRCLE, shape) { shape = it }
-                        ShapeButton("✕", DotShape.X, shape) { shape = it }
+                        ShapeButton("■", DotShape.SQUARE, config.shape) { config = config.copy(shape = it) }
+                        ShapeButton("●", DotShape.CIRCLE, config.shape) { config = config.copy(shape = it) }
+                        ShapeButton("✕", DotShape.X, config.shape) { config = config.copy(shape = it) }
                     }
 
                     Spacer(Modifier.height(24.dp))
                     Text("DOT COLOR", color = Color.Gray)
                     Spacer(Modifier.height(8.dp))
                     Row(horizontalArrangement = Arrangement.spacedBy(12.dp)) {
-                        DotColor.entries.forEach { c -> ColorButton(c, color) { color = it } }
+                        DotColor.entries.forEach { c -> ColorButton(c, config.color) { config = config.copy(color = it) } }
                     }
+
+                    // --- DEBUG BLOCK ---
+                    if (DebugPrefs.isDebug(context)) {
+                        Text(
+                            text = "🛠️ Debug Layout Settings",
+                            fontWeight = FontWeight.Bold,
+                            color = Color.Red,
+                            modifier = Modifier.padding(top = 24.dp, bottom = 8.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = config.leftPadding.toString(),
+                            onValueChange = { config = config.copy(leftPadding = it.toFloatOrNull() ?: 12f) },
+                            label = { Text("Left Padding (dp)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+                        
+                        OutlinedTextField(
+                            value = config.rightPadding.toString(),
+                            onValueChange = { config = config.copy(rightPadding = it.toFloatOrNull() ?: 12f) },
+                            label = { Text("Right Padding (dp)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = config.topPadding.toString(),
+                            onValueChange = { config = config.copy(topPadding = it.toFloatOrNull() ?: 12f) },
+                            label = { Text("Top Padding (dp)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = config.bottomPadding.toString(),
+                            onValueChange = { config = config.copy(bottomPadding = it.toFloatOrNull() ?: 64f) },
+                            label = { Text("Bottom Padding (dp)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+
+                        OutlinedTextField(
+                            value = config.dotSpacing.toString(),
+                            onValueChange = { config = config.copy(dotSpacing = it.toFloatOrNull() ?: 4f) },
+                            label = { Text("Dot Spacing (dp)") },
+                            keyboardOptions = KeyboardOptions(keyboardType = KeyboardType.Number),
+                            modifier = Modifier.fillMaxWidth().padding(bottom = 8.dp)
+                        )
+                    }
+                    // --- END DEBUG BLOCK ---
 
                     Spacer(Modifier.height(32.dp))
                     Box(
                         modifier = Modifier
                             .fillMaxWidth()
                             .background(
-                                if (color == DotColor.MATERIAL_YOU && Build.VERSION.SDK_INT >= 31) 
+                                if (config.color == DotColor.MATERIAL_YOU && Build.VERSION.SDK_INT >= 31) 
                                     dynamicDarkColorScheme(LocalContext.current).primary 
                                 else 
-                                    Color(color.hex), 
+                                    Color(config.color.hex), 
                                 CircleShape
                             )
                             .clickable {
                                 lifecycleScope.launch {
-                                    configRepo.saveConfig(
-                                        appWidgetId, WidgetConfig(eventId, shape, color)
-                                    )
+                                    // Save the single config object
+                                    configRepo.saveConfig(appWidgetId, config)
                                     val manager = GlanceAppWidgetManager(this@WidgetConfigActivity)
                                     val glanceId = manager.getGlanceIdBy(appWidgetId)
                                     DaysLeftWidget().update(this@WidgetConfigActivity, glanceId)
@@ -142,7 +197,7 @@ class WidgetConfigActivity : ComponentActivity() {
                 }
             }
         }
-    }
+    } // <-- onCreate closes here!
 }
 
 @Composable

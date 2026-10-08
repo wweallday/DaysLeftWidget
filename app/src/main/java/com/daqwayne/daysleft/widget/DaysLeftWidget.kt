@@ -6,6 +6,10 @@ import com.daqwayne.daysleft.data.DebugPrefs
 import android.content.Context
 import android.os.Build
 import androidx.compose.material3.dynamicDarkColorScheme
+import androidx.compose.ui.text.buildAnnotatedString
+import androidx.glance.layout.width
+import androidx.compose.ui.text.SpanStyle
+import androidx.compose.ui.text.withStyle
 import androidx.compose.ui.graphics.toArgb
 import android.os.Bundle
 import androidx.compose.runtime.Composable
@@ -150,6 +154,11 @@ private fun WidgetContent(
                     shape = config.shape.ordinal,
                     accentColor = accentArgb,
                     debug = debug,
+                    leftPadding = config.leftPadding,
+                    rightPadding = config.rightPadding,
+                    topPadding = config.topPadding,
+                    bottomPadding = config.bottomPadding,
+                    dotSpacing = config.dotSpacing
                 )
 
                 val rv = RemoteViews(LocalContext.current.packageName, R.layout.widget_grid).apply {
@@ -171,35 +180,46 @@ private fun WidgetContent(
                 Spacer(GlanceModifier.height(8.dp))
 
                 // BOTTOM ROW: Title on Left, Days on Right
+                // BOTTOM ROW: Title on Left, Days on Right
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
-                    // defaultWeight() forces the title to take up available space, 
-                    // pushing the "days" text to the far right edge.
+                    // Title takes up available space
                     Text(
                         text = event.title,
                         modifier = GlanceModifier.defaultWeight(),
                         style = TextStyle(
                             color = ColorProvider(subTextColor), 
-                            fontSize = 13.sp // Fixed, consistent size
+                            fontSize = 13.sp
                         ),
-                        maxLines = 1, // Prevents wrapping into the days text
+                        maxLines = 1,
                     )
                     
                     Spacer(GlanceModifier.width(8.dp))
                     
+                    // NUMBER (Bold)
                     Text(
-                        text = "${event.daysLeft()} days",
+                        text = "${event.daysLeft()}",
                         style = TextStyle(
                             color = ColorProvider(textColor), 
-                            fontSize = 14.sp, // Fixed, consistent size
-                            fontWeight = FontWeight.Bold
+                            fontSize = 14.sp,
+                            fontWeight = FontWeight.Bold  // Only this part is bold
+                        ),
+                        maxLines = 1,
+                    )
+                    
+                    // "days left" (Normal weight)
+                    Text(
+                        text = " days left",
+                        style = TextStyle(
+                            color = ColorProvider(subTextColor), 
+                            fontSize = 14.sp
+                            // No fontWeight = normal by default
                         ),
                         maxLines = 1,
                     )
                 }
-
                 if (debug) {
                     Spacer(GlanceModifier.height(4.dp))
                     Text(
@@ -221,6 +241,7 @@ private fun DayGrid(
     spaceW: Float,
     spaceH: Float,
     debug: Boolean,
+    config: WidgetConfig
 ) {
     val glyph = when (shape) {
         DotShape.SQUARE -> "■"
@@ -233,10 +254,9 @@ private fun DayGrid(
 
     val fontScale = androidx.glance.LocalContext.current.resources.configuration.fontScale
 
-    val spacing = 2f
-    val availW = spaceW - 24f
-    val availH = spaceH - 90f
-
+    val spacing = config.dotSpacing
+    val availW = spaceW - config.leftPadding - config.rightPadding
+    val availH = spaceH - config.topPadding - config.bottomPadding
     val minDot = 4f
     val fudge = 1.35f
     val cells0 = total.coerceAtLeast(1).coerceAtMost(150)

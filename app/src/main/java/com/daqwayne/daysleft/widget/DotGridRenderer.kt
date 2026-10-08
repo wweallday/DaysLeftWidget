@@ -22,7 +22,12 @@ object DotGridRenderer {
         passed: Int,
         shape: Int,
         accentColor: Int,
-        debug: Boolean = false
+        debug: Boolean = false,
+        leftPadding: Float = 12f,
+        rightPadding: Float = 12f,
+        topPadding: Float = 12f,
+        bottomPadding: Float = 64f,
+        dotSpacing: Float = 4f
     ): Bitmap {
         val density = context.resources.displayMetrics.density
         val w = (widthDp * density).toInt().coerceAtLeast(10)
@@ -34,27 +39,32 @@ object DotGridRenderer {
         // Paint background black so we can see the bitmap bounds during resize
         canvas.drawColor(Color.BLACK)
 
-        val spacing = 2f * density
-        val minDot = 3f * density
-        var cells = total.coerceAtLeast(1).coerceAtMost(400)
-
         val aspect = w.toFloat() / h.toFloat()
 
-        // 1) ASPECT-AWARE grid: wide widget → more cols, tall widget → more rows
-        var cols = maxOf(1, round(sqrt(cells.toFloat() * aspect)).toInt())
-        var rows = maxOf(1, ceil(cells.toFloat() / cols).toInt())
-        var dot = min(
-            (w - (cols - 1) * spacing) / cols,
-            (h - (rows - 1) * spacing) / rows
-        )
+        val spacing = dotSpacing
+        val availW = widthDp - leftPadding - rightPadding
+        val availH = heightDp - topPadding - bottomPadding
+
+        val minDot = 4f
+        val fudge = 1.35f
+        val cells0 = total.coerceAtLeast(1).coerceAtMost(150)
+
+        // Changed to var so they can be recalculated in the steps below
+        var colsMax = maxOf(1, floor((availW + spacing) / (minDot + spacing)).toInt())
+        var cols = maxOf(1, minOf(colsMax, ceil(sqrt(cells0.toFloat())).toInt()))
+        val dotW = (availW - (cols - 1) * spacing) / cols
+        val rowsMax = maxOf(1, floor((availH + spacing) / (dotW * fudge + spacing)).toInt())
+        var cells = minOf(cells0, cols * rowsMax)
+        var rows = ceil(cells.toFloat() / cols).toInt()
+        var dot = maxOf(minDot, dotW)
 
         // 2) dots too small → fewer cells (each dot = more days)
         if (dot < minDot) {
-            val colsMax = maxOf(1, floor((w + spacing) / (minDot + spacing)).toInt())
-            val rowsMax = maxOf(1, floor((h + spacing) / (minDot + spacing)).toInt())
-            cells = minOf(cells, colsMax * rowsMax)
+            colsMax = maxOf(1, floor((w + spacing) / (minDot + spacing)).toInt())
+            val rowsMax2 = maxOf(1, floor((h + spacing) / (minDot + spacing)).toInt())
+            cells = minOf(cells, colsMax * rowsMax2)
             cols = maxOf(1, round(sqrt(cells.toFloat() * aspect)).toInt()).coerceAtMost(colsMax)
-            rows = maxOf(1, ceil(cells.toFloat() / cols).toInt()).coerceAtMost(rowsMax)
+            rows = maxOf(1, ceil(cells.toFloat() / cols).toInt()).coerceAtMost(rowsMax2)
             dot = min(
                 (w - (cols - 1) * spacing) / cols,
                 (h - (rows - 1) * spacing) / rows
@@ -77,11 +87,13 @@ object DotGridRenderer {
         val gridH = rows * dot + (rows - 1) * spacing
         val ox = (w - gridW) / 2f
         val oy = (h - gridH) / 2f
+        
         val fillAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accentColor }
         val strokeAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = accentColor; strokeWidth = dot / 6f }
         val rect = RectF()
         val fillDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF4A4A4A.toInt() } 
         val strokeDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = 0xFF4A4A4A.toInt(); strokeWidth = dot / 6f }
+        
         for (i in 0 until cells) {
             val r = i / cols
             val c = i % cols
@@ -103,15 +115,17 @@ object DotGridRenderer {
                 }
             }
         }
+        
         if (debug) {
-          val borderPaint = Paint().apply {
-              color = Color.WHITE
-              style = Paint.Style.STROKE
-              strokeWidth = 2f * density
-          }
-          val i = borderPaint.strokeWidth / 2f
-          canvas.drawRect(i, i, w - i, h - i, borderPaint)
-      }
+            val borderPaint = Paint().apply {
+                color = Color.WHITE
+                style = Paint.Style.STROKE
+                strokeWidth = 2f * density
+            }
+            val i = borderPaint.strokeWidth / 2f
+            canvas.drawRect(i, i, w - i, h - i, borderPaint)
+        }
+        
         return bitmap
     }
 }
