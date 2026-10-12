@@ -1,7 +1,6 @@
 package com.daqwayne.daysleft.widget
 
 import android.content.Context
-import kotlin.math.round
 import android.graphics.Bitmap
 import android.graphics.Canvas
 import android.graphics.Color
@@ -11,6 +10,7 @@ import kotlin.math.ceil
 import kotlin.math.floor
 import kotlin.math.max
 import kotlin.math.min
+import kotlin.math.round
 import kotlin.math.sqrt
 
 object DotGridRenderer {
@@ -23,10 +23,6 @@ object DotGridRenderer {
         shape: Int,
         accentColor: Int,
         debug: Boolean = false,
-        leftPadding: Float = 12f,
-        rightPadding: Float = 12f,
-        topPadding: Float = 12f,
-        bottomPadding: Float = 64f,
         dotSpacing: Float = 4f
     ): Bitmap {
         val density = context.resources.displayMetrics.density
@@ -35,43 +31,36 @@ object DotGridRenderer {
 
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
         val canvas = Canvas(bitmap)
-        
-        // Paint background black so we can see the bitmap bounds during resize
         canvas.drawColor(Color.BLACK)
+
+        val spacing = dotSpacing * density
+        val minDot = 3f * density
+        var cells = total.coerceAtLeast(1).coerceAtMost(400)
 
         val aspect = w.toFloat() / h.toFloat()
 
-        val spacing = dotSpacing
-        val availW = widthDp - leftPadding - rightPadding
-        val availH = heightDp - topPadding - bottomPadding
+        // 1) ASPECT-AWARE grid
+        var cols = maxOf(1, round(sqrt(cells.toFloat() * aspect)).toInt())
+        var rows = maxOf(1, ceil(cells.toFloat() / cols).toInt())
+        var dot = min(
+            (w - (cols - 1) * spacing) / cols,
+            (h - (rows - 1) * spacing) / rows
+        )
 
-        val minDot = 4f
-        val fudge = 1.35f
-        val cells0 = total.coerceAtLeast(1).coerceAtMost(150)
-
-        // Changed to var so they can be recalculated in the steps below
-        var colsMax = maxOf(1, floor((availW + spacing) / (minDot + spacing)).toInt())
-        var cols = maxOf(1, minOf(colsMax, ceil(sqrt(cells0.toFloat())).toInt()))
-        val dotW = (availW - (cols - 1) * spacing) / cols
-        val rowsMax = maxOf(1, floor((availH + spacing) / (dotW * fudge + spacing)).toInt())
-        var cells = minOf(cells0, cols * rowsMax)
-        var rows = ceil(cells.toFloat() / cols).toInt()
-        var dot = maxOf(minDot, dotW)
-
-        // 2) dots too small → fewer cells (each dot = more days)
+        // 2) dots too small
         if (dot < minDot) {
-            colsMax = maxOf(1, floor((w + spacing) / (minDot + spacing)).toInt())
-            val rowsMax2 = maxOf(1, floor((h + spacing) / (minDot + spacing)).toInt())
-            cells = minOf(cells, colsMax * rowsMax2)
+            val colsMax = maxOf(1, floor((w + spacing) / (minDot + spacing)).toInt())
+            val rowsMax = maxOf(1, floor((h + spacing) / (minDot + spacing)).toInt())
+            cells = minOf(cells, colsMax * rowsMax)
             cols = maxOf(1, round(sqrt(cells.toFloat() * aspect)).toInt()).coerceAtMost(colsMax)
-            rows = maxOf(1, ceil(cells.toFloat() / cols).toInt()).coerceAtMost(rowsMax2)
+            rows = maxOf(1, ceil(cells.toFloat() / cols).toInt()).coerceAtMost(rowsMax)
             dot = min(
                 (w - (cols - 1) * spacing) / cols,
                 (h - (rows - 1) * spacing) / rows
             )
         }
 
-        // 3) FLOW TO THE EDGES: pack more columns while the height allows
+        // 3) FLOW TO THE EDGES
         val fitCols = maxOf(1, floor((w + spacing) / (dot + spacing)).toInt())
         if (fitCols > cols) {
             cols = minOf(fitCols, cells)
@@ -82,12 +71,12 @@ object DotGridRenderer {
             )
         }
 
-        // center the finished grid in the bitmap
+        // Center the finished grid in the bitmap
         val gridW = cols * dot + (cols - 1) * spacing
         val gridH = rows * dot + (rows - 1) * spacing
         val ox = (w - gridW) / 2f
         val oy = (h - gridH) / 2f
-        
+
         val fillAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accentColor }
         val strokeAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = accentColor; strokeWidth = dot / 6f }
         val rect = RectF()
