@@ -25,22 +25,24 @@ object DotGridRenderer {
         debug: Boolean = false
     ): Bitmap {
         val density = context.resources.displayMetrics.density
-        val w = (widthDp * density).toInt().coerceAtLeast(10)
-        val h = (heightDp * density).toInt().coerceAtLeast(10)
+        val scaleFactor = 4f // Render at 2x resolution for crispness
+        val w = (widthDp * density * scaleFactor).toInt().coerceAtLeast(20)
+        val h = (heightDp * density * scaleFactor).toInt().coerceAtLeast(20)
 
         val bitmap = Bitmap.createBitmap(w, h, Bitmap.Config.ARGB_8888)
+        // Don't set density - we want it to scale down
+        // bitmap.density = ... DELETE THIS LINE
+
         val canvas = Canvas(bitmap)
-        
-        // Paint background black so we can see the bitmap bounds during resize
         canvas.drawColor(Color.BLACK)
 
-        val spacing = 2f * density
-        val minDot = 3f * density
+        // Scale all measurements by scaleFactor
+        val spacing = 2f * density * scaleFactor
+        val minDot = 3f * density * scaleFactor
         var cells = total.coerceAtLeast(1).coerceAtMost(400)
 
         val aspect = w.toFloat() / h.toFloat()
 
-        // 1) ASPECT-AWARE grid: wide widget → more cols, tall widget → more rows
         var cols = maxOf(1, round(sqrt(cells.toFloat() * aspect)).toInt())
         var rows = maxOf(1, ceil(cells.toFloat() / cols).toInt())
         var dot = min(
@@ -48,7 +50,6 @@ object DotGridRenderer {
             (h - (rows - 1) * spacing) / rows
         )
 
-        // 2) dots too small → fewer cells (each dot = more days)
         if (dot < minDot) {
             val colsMax = maxOf(1, floor((w + spacing) / (minDot + spacing)).toInt())
             val rowsMax = maxOf(1, floor((h + spacing) / (minDot + spacing)).toInt())
@@ -61,7 +62,6 @@ object DotGridRenderer {
             )
         }
 
-        // 3) FLOW TO THE EDGES: pack more columns while the height allows
         val fitCols = maxOf(1, floor((w + spacing) / (dot + spacing)).toInt())
         if (fitCols > cols) {
             cols = minOf(fitCols, cells)
@@ -72,16 +72,37 @@ object DotGridRenderer {
             )
         }
 
-        // center the finished grid in the bitmap
         val gridW = cols * dot + (cols - 1) * spacing
         val gridH = rows * dot + (rows - 1) * spacing
         val ox = (w - gridW) / 2f
         val oy = (h - gridH) / 2f
-        val fillAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = accentColor }
-        val strokeAccent = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = accentColor; strokeWidth = dot / 6f }
+
+        // Always use anti-aliasing when rendering at high res
+        val useAntiAlias = true
+        
+        val fillAccent = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = accentColor
+            style = Paint.Style.FILL
+        }
+
+        val strokeAccent = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = accentColor
+            strokeWidth = maxOf(1f, dot / 6f)
+        }
+
+        val fillDim = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            color = 0xFF4A4A4A.toInt()
+            style = Paint.Style.FILL
+        }
+
+        val strokeDim = Paint(Paint.ANTI_ALIAS_FLAG or Paint.FILTER_BITMAP_FLAG).apply {
+            style = Paint.Style.STROKE
+            color = 0xFF4A4A4A.toInt()
+            strokeWidth = maxOf(1f, dot / 6f)
+        }
+
         val rect = RectF()
-        val fillDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { color = 0xFF4A4A4A.toInt() } 
-        val strokeDim = Paint(Paint.ANTI_ALIAS_FLAG).apply { style = Paint.Style.STROKE; color = 0xFF4A4A4A.toInt(); strokeWidth = dot / 6f }
         for (i in 0 until cells) {
             val r = i / cols
             val c = i % cols
@@ -103,15 +124,17 @@ object DotGridRenderer {
                 }
             }
         }
+        
         if (debug) {
-          val borderPaint = Paint().apply {
-              color = Color.WHITE
-              style = Paint.Style.STROKE
-              strokeWidth = 2f * density
-          }
-          val i = borderPaint.strokeWidth / 2f
-          canvas.drawRect(i, i, w - i, h - i, borderPaint)
-      }
+            val borderPaint = Paint(Paint.ANTI_ALIAS_FLAG).apply {
+                color = Color.WHITE
+                style = Paint.Style.STROKE
+                strokeWidth = 2f * density * scaleFactor
+            }
+            val borderOffset = borderPaint.strokeWidth / 2f
+            canvas.drawRect(borderOffset, borderOffset, w - borderOffset, h - borderOffset, borderPaint)
+        }
+        
         return bitmap
     }
 }

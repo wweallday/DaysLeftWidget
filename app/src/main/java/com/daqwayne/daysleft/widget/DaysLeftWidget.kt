@@ -48,7 +48,6 @@ import kotlinx.coroutines.Dispatchers
 import kotlinx.coroutines.Job
 import kotlinx.coroutines.delay
 import kotlinx.coroutines.launch
-import androidx.compose.ui.graphics.toArgb
 import androidx.compose.ui.graphics.Color
 import com.daqwayne.daysleft.model.DotShape
 import com.daqwayne.daysleft.model.WidgetConfig
@@ -67,19 +66,18 @@ class DaysLeftWidgetReceiver : GlanceAppWidgetReceiver() {
 
     override fun onAppWidgetOptionsChanged(
         context: Context,
-        appWidgetManager: AppWidgetManager,
+        appWidgetManager: android.appwidget.AppWidgetManager,
         appWidgetId: Int,
         newOptions: Bundle
     ) {
         super.onAppWidgetOptionsChanged(context, appWidgetManager, appWidgetId, newOptions)
         val glanceId = GlanceAppWidgetManager(context).getGlanceIdBy(appWidgetId)
-        
-        // Cancel previous pending update
+
+        // Cancel any pending update from previous drag events
         updateJob?.cancel()
-        
-        // Wait 400ms for the resize drag to finish
+
+        // Update IMMEDIATELY. No delay needed.
         updateJob = scope.launch {
-            delay(400)
             glanceAppWidget.update(context, glanceId)
         }
     }
@@ -94,13 +92,19 @@ class DaysLeftWidget : GlanceAppWidget() {
         val event = events.find { it.id == config.eventId }
             ?: events.minByOrNull { it.targetDate }
 
-        val opts = AppWidgetManager.getInstance(context).getAppWidgetOptions(widgetId)
-        val spaceW = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_WIDTH, 160).toFloat()
-        val spaceH = opts.getInt(AppWidgetManager.OPTION_APPWIDGET_MIN_HEIGHT, 200).toFloat()
         val debug = DebugPrefs.isDebug(context)
 
         provideContent {
-            WidgetContent(event, config, widgetId, spaceW, spaceH,debug)
+            // 1. Get size the Glance way (handles launcher quirks much better)
+            val rawWidth = LocalSize.current.width.value
+            val rawHeight = LocalSize.current.height.value
+
+            // 2. CLAMP for buggy launchers (Lawnchair/Nova sometimes report 0 or extreme values)
+            // 40f is ~1 cell, 500f is ~full screen width. This guarantees safe math.
+            val safeWidth = rawWidth.coerceIn(40f, 500f)
+            val safeHeight = rawHeight.coerceIn(40f, 500f)
+
+            WidgetContent(event, config, widgetId, safeWidth, safeHeight, debug)
         }
     }
 }
@@ -136,8 +140,6 @@ private fun WidgetContent(
                 val passed = ChronoUnit.DAYS.between(event.startDate, LocalDate.now()).toInt().coerceIn(0, total)
 
                 // Calculate available space for the grid
-                // 24dp accounts for the 12dp outer padding on left/right.
-                // 64dp reserves space for the bottom text row + spacers so the grid doesn't overlap.
                 val gridWidthDp = (spaceW - 24f).coerceAtLeast(10f)
                 val gridHeightDp = (spaceH - 64f).coerceAtLeast(20f)
 
@@ -152,11 +154,10 @@ private fun WidgetContent(
                     debug = debug,
                 )
 
-                val rv = RemoteViews(LocalContext.current.packageName, R.layout.widget_grid).apply {
+                val rv = android.widget.RemoteViews(LocalContext.current.packageName, R.layout.widget_grid).apply {
                     setImageViewBitmap(R.id.grid_image, bitmap)
                 }
 
-                // The Grid takes up all remaining vertical space above the text
                 Box(
                     modifier = GlanceModifier
                         .fillMaxWidth()
@@ -170,30 +171,27 @@ private fun WidgetContent(
 
                 Spacer(GlanceModifier.height(8.dp))
 
-                // BOTTOM ROW: Title on Left, Days on Right
                 Row(
                     modifier = GlanceModifier.fillMaxWidth(),
                     verticalAlignment = Alignment.Vertical.CenterVertically
                 ) {
-                    // defaultWeight() forces the title to take up available space, 
-                    // pushing the "days" text to the far right edge.
                     Text(
                         text = event.title,
                         modifier = GlanceModifier.defaultWeight(),
                         style = TextStyle(
                             color = ColorProvider(subTextColor), 
-                            fontSize = 13.sp // Fixed, consistent size
+                            fontSize = 13.sp
                         ),
-                        maxLines = 1, // Prevents wrapping into the days text
+                        maxLines = 1,
                     )
-                    
+
                     Spacer(GlanceModifier.width(8.dp))
-                    
+
                     Text(
                         text = "${event.daysLeft()} days",
                         style = TextStyle(
                             color = ColorProvider(textColor), 
-                            fontSize = 14.sp, // Fixed, consistent size
+                            fontSize = 14.sp,
                             fontWeight = FontWeight.Bold
                         ),
                         maxLines = 1,
@@ -202,8 +200,9 @@ private fun WidgetContent(
 
                 if (debug) {
                     Spacer(GlanceModifier.height(4.dp))
+                    // FIXED: Use spaceW and spaceH here, as they are the parameters of this function
                     Text(
-                        "#$widgetId · ${spaceW.toInt()}x${spaceH.toInt()}",
+                        "#$widgetId · Size: ${spaceW.toInt()}x${spaceH.toInt()} (Raw: ${LocalSize.current.width.value.toInt()}x${LocalSize.current.height.value.toInt()})",
                         style = TextStyle(color = ColorProvider(Color(0xFF666666)), fontSize = 9.sp),
                     )
                 }
